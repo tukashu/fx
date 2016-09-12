@@ -1,0 +1,87 @@
+// パラメータ
+	input int MAPeriod = 20;
+	input double Lots = 0.1;
+	input int Slippage = 2;
+
+// レート
+	double Bid, Ask;
+	double Close[];
+
+
+// テクニカル指標ハンドル
+	int hMA;
+
+// iMA()用配列
+	double BufMA[];
+
+//初期化変数
+	int OnInit()
+		  {
+		
+		// テクニカル指標の初期化
+			hMA = iMA(NULL, 0, MAPeriod, 0, MODE_SMA, PRICE_CLOSE);
+
+			ArraySetAsSeries(BufMA, true);
+
+			int count = 3;
+			CopyBuffer(hMA, 0, 0, count, BufMA);
+
+		// テクニカル指標の解放
+			IndicatorRelease(hMA);
+
+		return(0);
+	}
+
+//ティック関数(メインロジック部分)
+	void OnTick()
+		{
+		   if(!RefreshRates()) return;
+		   double pos = OpenLots();
+		   double lots = MathAbs(pos) + Lots;
+		   if(pos <= 0 && Close[2] <= BufMA[2] && Close[1] > BufMA[1]) OrderSendMarket(ORDER_TYPE_BUY, lots);
+		   if(pos >= 0 && Close[2] >= BufMA[2] && Close[1] < BufMA[1]) OrderSendMarket(ORDER_TYPE_SELL, lots);
+		}
+
+// レートの更新
+	bool RefreshRates()
+		{
+		   MqlTick tick;
+		   if(!SymbolInfoTick(_Symbol, tick)) return(false);
+		   Bid = tick.bid;
+		   Ask = tick.ask;
+		   
+		   int count = 3;
+		   if(CopyClose(_Symbol, _Period, 0, count, Close) < count) return(false);
+		   if(CopyBuffer(hMA, 0, 0, count, BufMA) < count) return(false);
+		   return(true);
+		}
+
+// 成行オーダー
+	void OrderSendMarket(ENUM_ORDER_TYPE type, double lots)
+		{
+		   MqlTradeRequest request;
+		   MqlTradeResult result; 
+
+		   request.action = TRADE_ACTION_DEAL;
+		   request.symbol = _Symbol;
+		   if(type == ORDER_TYPE_BUY) request.price = Ask;
+		   else if(type == ORDER_TYPE_SELL) request.price = Bid;
+		   request.deviation = Slippage;
+		   request.volume = lots;
+		   request.type = type;
+
+		   OrderSend(request,result);
+		   Print("OrderSendRetCode = ", result.retcode);
+		}
+
+// オープンポジションのロット数
+	double OpenLots()
+		{
+		   double lots = 0.0;
+		   if(PositionSelect(_Symbol))
+		   {
+		      lots = PositionGetDouble(POSITION_VOLUME);
+		      if(PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL) lots = -lots;
+		   }
+		   return(lots);
+		}
