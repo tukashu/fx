@@ -1,0 +1,30 @@
+double Bid, Ask;
+
+// 初期化関数
+int OnInit()
+{
+   return(0);
+}
+
+// 終了関数
+void OnDeinit(const int reason)
+{
+}
+
+// ティック関数
+void OnTick()
+{
+   if(!RefreshRates()) return;
+   Print("Bid=", Bid); 
+   Print("Ask=", Ask); 
+}
+  
+// レートの更新
+bool RefreshRates()
+{
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol, tick)) return(false);
+   Bid = tick.bid;
+   Ask = tick.ask;
+   return(true);
+}
