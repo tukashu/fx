@@ -144,7 +144,10 @@ void CheckForOpen() {
 
     // 1つ前のバーの始値が移動平均値より大きい 且つ 
     // 1つ前のバーの終値が移動平均値よりも小さい場合
-    if( Open[1] > ma && Close[1] < ma) { 
+    //且つ時間してあり
+    if( Open[1] > ma && Close[1] < ma) && (Hour() >= 9 && Hour() < 10)
+    
+    { 
         
         // ショートエントリーオーダー送信
         res = OrderSend(
