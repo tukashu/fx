@@ -14,9 +14,11 @@
 #define MAGICMA  20150520                           // EA識別用マジックナンバー
 
 // 入力パラメータ宣言
-input double Lots          = 0.1;                   // ロット数[分解能：10万通貨]
-input int    MovingPeriod  = 12;                    // 移動平均期間
-input int    MovingShift   = 6;                     // 移動平均シフト
+extern double Lots          = 1.0;                  // ロット数[分解能：10万通貨]
+extern int BreakPeriod      = 60;                   //指定期間    
+extern int Slippage         =3;                     //スリップページ
+extern double max           = ;                     //maxの宣言
+extern double min           = ;                     //minの宣言
 
 
 //+------------------------------------------------------------------+
@@ -111,12 +113,19 @@ int CalculateCurrentOrders( void ) {
 //+------------------------------------------------------------------+
 //| オーダー処理                                  |
 //+------------------------------------------------------------------+
+
+
 void CheckForOpen() {
 
     // ローカル変数宣言
-    double ma;       // 単純移動平均用
-    int    res;      // オーダー送信戻り値用
-    double entrylot; // オーダー用ロット
+        int    res;      // オーダー送信戻り値用
+        double entrylot; // オーダー用ロット
+
+    //期間内最高値の取得
+        max=High[iHighest(NULL, PERIOD_M1, MODE_HIGH, BreakPeriod,0)];
+
+    //期間内最安値の取得
+        min=Low[iLowest(NULL,PERIOD_M1,MODE_LOW,BreakPeriod,0)];
 
     if( Volume[0] > 1) { 
         // 現在のtick出来高が2以上の場合は関数処理終了
@@ -131,61 +140,37 @@ void CheckForOpen() {
 
     entrylot = NormalizeDouble(Lots,1); // 入力パラメータのロット数を、小数点第一位で正規化
 
-    // テクニカルインジケータ：移動平均の値を算出
-    ma = iMA(
-             NULL,         // 現在の通貨ペア
-             0,            // 現在の時間軸
-             MovingPeriod, // 入力パラメ―タで指定した移動平均期間
-             MovingShift,  // 入力パラメータで指定した移動平均シフト
-             MODE_SMA,     // 平滑化タイプ：単純移動平均
-             PRICE_CLOSE,  // 終値で算出
-             0);           // シフト：無し
+//ロングの注文をいれる部分
+    if(max <= High[0] && OrdersTotal() < 1){
+        OrderSend(  Symbol(),       //現在の通貨ペア
+                    OP_BUY,         //ロングエントリー
+                    Lots,           //ロット設定
+                    Ask,            //現在の買値で発注
+                    Slippage,       //スリッページ
+                    min-10,         //ロスカット設定
+                    NULL,           //リミット設定
+                    NULL,           //コメント
+                    0,              //マジックナンバー
+                    0,              //有効期限 
+                    Blue);          //チャート上の注文矢印の色
 
-
-    // 1つ前のバーの始値が移動平均値より大きい 且つ 
-    // 1つ前のバーの終値が移動平均値よりも小さい場合
-    //且つ時間してあり
-    if( Open[1] > ma && Close[1] < ma) && (Hour() >= 9 && Hour() < 10)
-    
-    { 
-        
-        // ショートエントリーオーダー送信
-        res = OrderSend(
-                        Symbol(),        // 現在の通貨ペア
-                        OP_SELL,         // ショートエントリー(成行注文)
-                        entrylot,        // ロット設定
-                        Bid,             // 現在の売値で発注
-                        3,               // スリップページ
-                        0,               // ストップロス設定：無し
-                        0,               // リミット設定：無し
-                        "ショート",      // コメント
-                        MAGICMA,         // マジックナンバー
-                        0,               // 有効期限：無し
-                        clrRed);            // チャート上の注文矢印の色：赤
-
-        return; // 関数処理終了
+        return;  //関数処理終了
     }
 
-    // 1つ前のバーの始値が移動平均値より小さい 且つ 
-    // 1つ前のバーの終値が移動平均値よりも大きい場合 且つ
-    //時間が9時以降10時未満だった場合
-    if ( Open[1] < ma && Close[1] > ma )　&& (Hour() >= 9 && Hour() < 10)
-    
-    {
-        res = OrderSend(
-                        Symbol(),       // 現在の通貨ペア
-                        OP_BUY,         // ロングエントリー(成行注文)
-                        entrylot,        // ロット設定
-                        Ask,            // 現在の買値で発注
-                        3,              // スリップページ
-                        0,              // ストップロス設定：無し
-                        0,              // リミット設定：無し
-                        "ロング",       // コメント
-                        MAGICMA,        // マジックナンバー
-                        0,              // 有効期限：無し
-                        clrBlue);          // チャート上の注文矢印の色：青
-
-        return; // 関数処理終了
+//ショートの注文をいれる部分
+    if(Low[0] <= min && OrdersTotal() < 1){
+        OrderSend(  Symbol(),       //現在の通貨ペア
+                    OP_SELL,        //ショートエントリー
+                    Lots,           //ロット設定
+                    Bid,            //現在の売値で発注
+                    Slippage,       //スリッページ
+                    max+10,         //ロスカット設定
+                    NULL,           //リミット設定
+                    NULL,           //コメント
+                    0,              //マジックナンバー
+                    0,              //有効期限
+                    Red);           //チャート上の注文矢印の色
+        return; //関数処理終了
     }
 
 }
@@ -195,24 +180,13 @@ void CheckForOpen() {
 void CheckForClose() {
 
     // ローカル変数宣言
-    double ma;     // 単純移動平均用
-    int    icount; // ループカウンタ用
-    bool   ret;    // クローズ処理戻り値用
+        int    icount; // ループカウンタ用
+        bool   ret;    // クローズ処理戻り値用
 
     if ( Volume[0] > 1 ) {
         // 現在のtick出来高が2以上の場合は関数処理終了
         return;
     }
-
-    // テクニカルインジケータ：移動平均の値を算出
-    ma = iMA(
-             NULL,         // 現在の通貨ペア
-             0,            // 現在の時間軸
-             MovingPeriod, // 入力パラメ―タで指定した移動平均期間
-             MovingShift,  // 入力パラメータで指定した移動平均シフト
-             MODE_SMA,     // 平滑化タイプ：単純移動平均
-             PRICE_CLOSE,  // 終値で算出
-             0);           // シフト：無し
 
 
     // 現在アカウントで保有しているポジション数分ループ処理を行う
@@ -232,9 +206,8 @@ void CheckForClose() {
 
         // 選択した注文がロングポジションの場合
         if( OrderType() == OP_BUY) {
-            // 1つ前のバーの始値が移動平均値より大きい 且つ 
-            // 1つ前のバーの終値が移動平均値よりも小さい場合
-            if( Open[1] > ma && Close[1] < ma ) {
+            //現在の足の安値が(min-10)以下担った場合
+            if( Low[0] <= (min-10) ) {
 
                 // 指定したチケットのポジションをクローズ
                 ret = OrderClose(
@@ -257,9 +230,8 @@ void CheckForClose() {
         // 選択した注文がショートポジションの場合
         if( OrderType() == OP_SELL) {
 
-            // 1つ前のバーの始値が移動平均値より小さい 且つ 
-            // 1つ前のバーの終値が移動平均値よりも大きい場合
-            if( Open[1] < ma && Close[1] > ma ) {
+            //現在の足の高値が(max+10)以上になった場合            
+            if( High[0] >= (max+10) ) {
 
                 // 指定したチケットのポジションをクローズ
                 ret = OrderClose(
