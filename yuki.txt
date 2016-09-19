@@ -14,11 +14,11 @@
 #define MAGICMA  20150520                           // EA識別用マジックナンバー
 
 // 入力パラメータ宣言
-extern double Lots          = 1.0;                  // ロット数[分解能：10万通貨]
-extern int BreakPeriod      = 60;                   //指定期間    
-extern int Slippage         =3;                     //スリップページ
-extern double max           = ;                     //maxの宣言
-extern double min           = ;                     //minの宣言
+extern double Lots          = 1.0;                   // ロット数[分解能：10万通貨]
+extern int    BreakPeriod   = 60;                    //指定範囲
+extern int    Slippage      = 3;                     //スリップページ
+extern double max           = 0 ;                     //指定期間内最高値  初期値＝＝0
+extern double min           = 0 ;                     //指定期間内最安値  初期値＝＝0
 
 
 //+------------------------------------------------------------------+
@@ -113,19 +113,17 @@ int CalculateCurrentOrders( void ) {
 //+------------------------------------------------------------------+
 //| オーダー処理                                  |
 //+------------------------------------------------------------------+
-
-
 void CheckForOpen() {
 
     // ローカル変数宣言
-        int    res;      // オーダー送信戻り値用
-        double entrylot; // オーダー用ロット
-
-    //期間内最高値の取得
-        max=High[iHighest(NULL, PERIOD_M1, MODE_HIGH, BreakPeriod,0)];
-
-    //期間内最安値の取得
-        min=Low[iLowest(NULL,PERIOD_M1,MODE_LOW,BreakPeriod,0)];
+    int    res;      // オーダー送信戻り値用
+    double entrylot; // オーダー用ロット
+    
+    //指定期間内最高値の取得
+    max = High[iHighest(NULL,PERIOD_M1,MODE_HIGH,BreakPeriod,0)];
+    
+    //指定期間内最安の取得
+    min = Low[iLowest(NULL,PERIOD_M1,MODE_LOW,BreakPeriod,0)];
 
     if( Volume[0] > 1) { 
         // 現在のtick出来高が2以上の場合は関数処理終了
@@ -140,38 +138,40 @@ void CheckForOpen() {
 
     entrylot = NormalizeDouble(Lots,1); // 入力パラメータのロット数を、小数点第一位で正規化
 
-//ロングの注文をいれる部分
+    //ロングで注文をいれる部分
     if(max <= High[0] && OrdersTotal() < 1){
-        OrderSend(  Symbol(),       //現在の通貨ペア
-                    OP_BUY,         //ロングエントリー
-                    Lots,           //ロット設定
-                    Ask,            //現在の買値で発注
-                    Slippage,       //スリッページ
-                    min-10,         //ロスカット設定
-                    NULL,           //リミット設定
-                    NULL,           //コメント
-                    0,              //マジックナンバー
-                    0,              //有効期限 
-                    Blue);          //チャート上の注文矢印の色
+         
+                  OrderSend(  Symbol(),
+                              OP_BUY,
+                              Lots,
+                              Ask,
+                              Slippage,
+                              min-10,
+                              NULL,
+                              NULL,
+                              0,
+                              0,
+                              Blue );
+                  
+   }
 
-        return;  //関数処理終了
-    }
-
-//ショートの注文をいれる部分
-    if(Low[0] <= min && OrdersTotal() < 1){
-        OrderSend(  Symbol(),       //現在の通貨ペア
-                    OP_SELL,        //ショートエントリー
-                    Lots,           //ロット設定
-                    Bid,            //現在の売値で発注
-                    Slippage,       //スリッページ
-                    max+10,         //ロスカット設定
-                    NULL,           //リミット設定
-                    NULL,           //コメント
-                    0,              //マジックナンバー
-                    0,              //有効期限
-                    Red);           //チャート上の注文矢印の色
-        return; //関数処理終了
-    }
+    //ショートで注文を入れる部分
+   if(Low[0] <= min && OrdersTotal() < 1 ){
+   
+                 OrderSend(   Symbol(),
+                              OP_SELL,
+                              Lots,
+                              Bid,
+                              Slippage,
+                              max+10,
+                              NULL,
+                              NULL,
+                              0,
+                              0,
+                              Red );
+              
+   
+   }
 
 }
 //+------------------------------------------------------------------+
@@ -180,13 +180,14 @@ void CheckForOpen() {
 void CheckForClose() {
 
     // ローカル変数宣言
-        int    icount; // ループカウンタ用
-        bool   ret;    // クローズ処理戻り値用
+    int    icount; // ループカウンタ用
+    bool   ret;    // クローズ処理戻り値用
 
     if ( Volume[0] > 1 ) {
         // 現在のtick出来高が2以上の場合は関数処理終了
         return;
     }
+
 
 
     // 現在アカウントで保有しているポジション数分ループ処理を行う
@@ -206,8 +207,9 @@ void CheckForClose() {
 
         // 選択した注文がロングポジションの場合
         if( OrderType() == OP_BUY) {
-            //現在の足の安値が(min-10)以下担った場合
-            if( Low[0] <= (min-10) ) {
+            
+            // 現在の足の安値が
+            if( Low[0] >= (min - 10) ) {
 
                 // 指定したチケットのポジションをクローズ
                 ret = OrderClose(
@@ -229,9 +231,9 @@ void CheckForClose() {
 
         // 選択した注文がショートポジションの場合
         if( OrderType() == OP_SELL) {
-
-            //現在の足の高値が(max+10)以上になった場合            
-            if( High[0] >= (max+10) ) {
+ 
+            // 1つ前のバーの終値が移動平均値よりも大きい場合
+            if( High[0] >= (max + 10) ) {
 
                 // 指定したチケットのポジションをクローズ
                 ret = OrderClose(
