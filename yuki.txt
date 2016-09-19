@@ -59,7 +59,7 @@ void OnTick() {
     }
 
     // 現在保有中のポジション数をチェック
-    if ( CalculateCurrentOrders() ==0  && (Hour() == 10 && Minute() == 0 && Sencond() == 0) ) {
+    if ( CalculateCurrentOrders() ==0  && (Hour() == 1 && Minute() == 0 && Seconds() == 0) ) {
         // ポジション保有していない場合
         CheckForOpen();                  // オーダー処理を行う
     } else {
@@ -143,7 +143,7 @@ void CheckForOpen() {
     entrylot = NormalizeDouble(Lots,1); // 入力パラメータのロット数を、小数点第一位で正規化
 
     //ロングで注文をいれる部分
-    if( Hour()==10 && Minute()==0 && Seconds()==0 && max <= High[0] && Start[0] > mid && OrdersTotal() < 1){
+    if( Hour()==1 && Minute()==0 && Seconds()==0 && max <= High[0] && Open[0] > mid && OrdersTotal() < 1){
          
                   OrderSend(  Symbol(),
                               OP_BUY,
@@ -160,7 +160,7 @@ void CheckForOpen() {
    }
 
     //ショートで注文を入れる部分
-   if(Hour()==10 && Minute()==0 && Seconds()==0 && Low[0] <= min && Start[0] < mid && OrdersTotal() < 1 ){
+   if(Hour()==1 && Minute()==0 && Seconds()==0 && Low[0] <= min && Open[0] < mid && OrdersTotal() < 1 ){
    
                  OrderSend(   Symbol(),
                               OP_SELL,
