@@ -264,7 +264,7 @@ void CheckForClose() {
                     ret = OrderClose(
                                  OrderTicket(), // クローズするポジションのチケット
                                  OrderLots(),   // クローズするロット数
-                                 Bid,           // クローズ価格：現在の売値
+                                 Ask,           // クローズ価格：現在の売値
                                  3,             // スリップページ
                                  clrWhite);        // チャート上の注文矢印の色：白
               }
