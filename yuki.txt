@@ -58,7 +58,7 @@ void OnTick() {
     }
 
     // 現在保有中のポジション数をチェック
-    if ( CalculateCurrentOrders() ==0) {
+    if ( CalculateCurrentOrders() ==0  && (Hour()>=9 && Hour()<10) ) {
         // ポジション保有していない場合
         CheckForOpen();                  // オーダー処理を行う
     } else {
